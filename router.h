@@ -19,6 +19,8 @@ public:
     Router(int router_id);
     ~Router();
 
+    // control functions
+   
     // port functions
     void print_port_status();
     bool *get_ports();

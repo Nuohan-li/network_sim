@@ -1,5 +1,8 @@
 #include "router.h"
+// #include "network.h"
 #include <cstring>
+
+// router functions
 
 Router::Router(int router_id){
     memset(ports, 0, sizeof(ports));
@@ -23,22 +26,8 @@ void Router::set_port_status(int port_id, bool status){
     ports[port_id - 1] = status;
 }
 
-// need to handle remote end
-// void Router::connect_link(int port_id, Router *remote_router, int remote_port_id){
-//     if(get_port_status(port_id - 1)){
-//         cout << "Link exists on this port\n";
-//         return;
-//     }
-//     if(remote_router->get_port_status(remote_port_id - 1)){
-//         cout << "Link exists on the remote end\n";
-//         return;
-//     }
-//     set_port_status(port_id, LINK_UP);
-//     remote_router->set_port_status(remote_port_id, LINK_UP);
-
-// }
-
 void Router::print_port_status(){
+    cout << "===============================================================\n";
     cout << "Router " << get_router_id() << " port status\n";
     cout << "===============================================================\n";
     cout << "Port number        " << "Link status       \n";
@@ -62,6 +51,7 @@ void Router::print_port_status(){
     cout << "  18               " << "  " << (get_port_status(17) == LINK_UP ? "up" : "down") << endl; 
     cout << "  19               " << "  " << (get_port_status(18) == LINK_UP ? "up" : "down") << endl; 
     cout << "  20               " << "  " << (get_port_status(19) == LINK_UP ? "up" : "down") << endl; 
+    cout << endl;
 }
 
 // getters and setters
