@@ -6,11 +6,36 @@
 
 Router::Router(int router_id){
     memset(ports, 0, sizeof(ports));
+    memset(mtable, 0, sizeof(mtable));
     set_router_id(router_id);
+    mtable_entry_num = 0;    
 }
 
 Router::~Router(){
     
+}
+
+void Router::send(Router *remote_end, string msg){
+
+}
+
+void Router::add_mtable_entry(string remote_end_ip, int ingress_port, int egress_port){
+    mtable[mtable_entry_num].egress_port = egress_port;
+    mtable[mtable_entry_num].ingress_port = ingress_port;
+    mtable[mtable_entry_num].remote_end_ip = remote_end_ip;
+    mtable_entry_num++;
+}
+
+void Router::print_MAC_table(){
+    cout << "===============================================================\n";
+    cout << "Router " << get_router_id() << " MAC table\n";
+    cout << "===============================================================\n";
+    cout << "IP                " << "egress port       " << "ingress port        \n";
+    for(int i = 0; i < mtable_entry_num; i++){
+        cout << mtable[i].remote_end_ip << "       " << mtable[i].egress_port << "                 " << 
+            mtable[i].ingress_port << endl;
+    }
+
 }
 
 // ports 
