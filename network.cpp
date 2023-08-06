@@ -142,6 +142,9 @@ int Network::connect_link(int router_id1, int router_id2, int port_id1, int port
     router1->set_port_status(port_id1, LINK_UP);
     router2->set_port_status(port_id2, LINK_UP);
 
+    router1->add_arp_table_entry(router2->get_ip(), router2->get_port_MAC(port_id2));
+    router2->add_arp_table_entry(router1->get_ip(), router2->get_port_MAC(port_id1));
+
     Link *link = new Link;
     link->port_id1 = port_id1;
     link->port_id2 = port_id2;
@@ -206,4 +209,6 @@ void Network::print_all_links(){
     }
     cout << endl;
 }
+
+
 

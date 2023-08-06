@@ -45,6 +45,7 @@ class Network{
         bool check_router_exists(int id);
         void print_all_routers();
         int first_empty_slot();
+        void print_router_mtable(int router_id);
 
         // link related functions
         int connect_link(int router_id1, int router_id2, int port_id1, int port_id2);

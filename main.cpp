@@ -4,6 +4,15 @@
 
 using namespace std;
 
+void router_test(){
+    cout << "==================== Router Class test ====================\n";
+    Router *router = new Router(1);
+    router->print_port_status();
+
+    router->set_port_status(1, LINK_UP);
+    router->print_port_status();
+}
+
 void network_test(){
     cout << "==================== Network Class test ====================\n";
     Network network = Network(1);
@@ -34,9 +43,16 @@ void network_test(){
     network.connect_link(201, 102, 4, 1); // should work
     network.connect_link(201, 102, 1, 1); // fail
     network.connect_link(101, 102, 1, 10); // should work
-    
-    network.print_all_links();
 
+    network.print_all_links();
+    Router *router2 = network.get_router_by_id(201);
+    if(router2 == nullptr){
+        printf("nullptr returned\n");
+    } else{
+        router2->print_ARP_table();
+    }
+    // network.get_router_by_id(201)->print_MAC_table();
+    
     network.remove_link(201, 1);
     network.remove_link(201, 2);
     network.print_all_links();
@@ -46,6 +62,7 @@ void network_test(){
 }
 
 int main(){
+    router_test();
     network_test();
     // run_program();
     return 0;
