@@ -38,24 +38,38 @@ void Router::free_ports(){
 }
 
 int Router::send(string dst_ip, string msg){
-    // if(get_port_status(port_id) == LINK_DOWN){
-    //     cout << "This link is down, unable to send message\n";
-    //     return 1;
-    // }
+    if(routing_table.count(dst_ip) == 0){
+        cout << "No route to destination " << dst_ip << endl;
+        return -1;
+    }
+    int port_id = routing_table[dst_ip]->interface_id; 
+    if(get_port_status(port_id) == LINK_DOWN){
+        cout << "Interface is down - Interface-ID: " << port_id << endl;
+        return -2; 
+    }
+    int size = 0;
     frame *frame1 = new frame;
-    return 0;
+    frame1->dst_mac = arp_table[dst_ip]->neighbor_MAC;
+    frame1->payload = msg;
+    frame1->src_mac = get_port_MAC(port_id);
+    size = frame1->dst_mac.size() + frame1->src_mac.size() + frame1->payload.size();
+    frame_to_byte(frame1, send_buffer);
+    delete frame1;
+    
+    // cout << "test send " << send_buffer.dst_mac << endl;
+    return size;
 }
 
 void Router::add_arp_table_entry(string remote_end_ip, string remote_end_mac){
     ARP_table_entry *new_entry = new ARP_table_entry;
     new_entry->neighbor_IP = remote_end_ip;
     new_entry->neighbor_MAC = remote_end_mac;
-    arp_table[remote_end_mac] = new_entry;
+    arp_table[remote_end_ip] = new_entry;
     arp_table_entry_num++;
 }
 
-int Router::remove_arp_table_entry(string mac){
-    return arp_table.erase(mac);
+int Router::remove_arp_table_entry(string ip){
+    return arp_table.erase(ip);
 }
 
 void Router::print_ARP_table(){
@@ -180,4 +194,78 @@ void Router::set_router_id(int id){
 int Router::get_router_id(){
     return router_id;
 }
+
+uint8_t* Router::get_send_buffer(){
+    return send_buffer;
+}
+
+uint8_t* Router::get_recv_buffer(){
+    return recv_buffer;
+}
+
+// ################################################
+// #
+// #        Other
+// #
+// ################################################
+
+void Router::frame_to_byte(frame *f, uint8_t *byte_array){
+    int offset = 0;
+
+    memcpy(byte_array + offset, f->dst_mac.c_str(), f->dst_mac.size());
+    offset += f->dst_mac.size();
+
+    memcpy(byte_array + offset, f->src_mac.c_str(), f->src_mac.size());
+    offset += f->src_mac.size();
+
+    memcpy(byte_array + offset, f->payload.c_str(), f->payload.size());
+}
+
+void Router::print_byte_array(uint8_t *byte_array, int size_byte){
+    uint16_t bytes_counter = 0;
+    int num_of_lines = 0;
+    int num_bytes_to_print = 0;
+    int remainder = size_byte % 32;
+    if(remainder == 0){
+        num_of_lines = size_byte / 32;
+    } else{
+        num_of_lines = size_byte / 32 + 1;
+    }
+    for(int i = 0; i < num_of_lines; i++){
+        printf("%04u     ", bytes_counter);
+        if(i == num_of_lines - 1 && remainder != 0){ 
+            num_bytes_to_print = remainder;
+        } else{
+            num_bytes_to_print = 32;
+        }
+        // printing the hex value 
+        for(int j = 0; j < num_bytes_to_print; j++){
+            printf("%02X ", byte_array[(i * num_bytes_to_print) + j]);
+            if(j == 15){
+                printf(" ");
+            }
+        }
+        printf(" ");
+        // upon reaching last line, add padding to hex values so that characters align
+        if(i == num_of_lines - 1){
+            int padding = 32 - num_bytes_to_print;
+            for (int j = 0; j < padding; j++) {
+                printf("   ");
+            }
+        }
+        // printing characters
+        for (int j = 0; j < num_bytes_to_print; j++) {
+            uint8_t value = byte_array[i * 32 + j];
+            if (isprint(value)) {
+                printf("%c", value);
+            } else {
+                printf(".");
+            }
+        }
+        printf("\n");
+        bytes_counter += num_bytes_to_print;
+    }
+
+}
+
 

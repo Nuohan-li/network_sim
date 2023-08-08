@@ -41,10 +41,11 @@ private:
     int router_id;
     string ip_addr;
     unordered_map<int, Port*> ports;
-    frame *send_buffer;
-    frame *recv_buffer;
-    unordered_map<string, ARP_table_entry *> arp_table; // mac used as key
-    unordered_map<string, routing_table_entry*> routing_table; // ip used as key
+    
+    uint8_t recv_buffer[10000];
+    uint8_t send_buffer[10000];
+    unordered_map<string, ARP_table_entry *> arp_table; // IP used as key
+    unordered_map<string, routing_table_entry*> routing_table; // IP used as key
     int arp_table_entry_num;
 public: 
     // router function
@@ -61,7 +62,6 @@ public:
     int remove_routing_table_entry(string dst_ip);
     void print_routing_table();
     void free_routing_table();
-    // control functions
 
     // port functions
     void init_ports();
@@ -73,11 +73,17 @@ public:
     void set_port_MAC(int port_id, string mac_addr);
     string get_port_MAC(int port_id);
 
+    // Other functions
+    void frame_to_byte(frame *frame, uint8_t *byte_array);
+    void print_byte_array(uint8_t *byte_array, int size);
+
     // getter and setter
     int get_router_id();
     void set_router_id(int id);
     string get_ip();
     void set_ip(string ip);
+    uint8_t *get_send_buffer();
+    uint8_t *get_recv_buffer();
     
 };
 
