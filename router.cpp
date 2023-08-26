@@ -1,4 +1,5 @@
 #include "router.h"
+#include "misc.h"
 #include <cstring>
 #include <thread>
 
@@ -23,9 +24,12 @@ Router::~Router(){
 void Router::init_ports(){
     for(int i = 0; i < NUM_PORTS; i++){
         Port *port = new Port();
-        port->set_MAC_addr(to_string(i)); // using ID - 1 as MAC address for now
+        // port->set_MAC_addr(to_string(i));
         port->set_port_id(i+1);
         port->set_port_status(LINK_DOWN);
+
+        uint64_t val = i & ((1 << 48) - 1);  // using ID as init MAC address for now
+
         ports[i+1] = port;
     }
 }
@@ -37,39 +41,55 @@ void Router::free_ports(){
     ports.clear();
 }
 
-int Router::send(string dst_ip, string msg){
-    if(routing_table.count(dst_ip) == 0){
+int Router::populate_send_buffer(uint8_t *dst_ip, string msg){
+    uint32_t dst_ip_32 = bytes_to_word(dst_ip);
+    if(routing_table.count(dst_ip_32) == 0){
         cout << "No route to destination " << dst_ip << endl;
         return -1;
     }
-    int port_id = routing_table[dst_ip]->interface_id; 
+    int port_id = routing_table[dst_ip_32]->interface_id; 
     if(get_port_status(port_id) == LINK_DOWN){
         cout << "Interface is down - Interface-ID: " << port_id << endl;
         return -2; 
     }
     int size = 0;
     frame *frame1 = new frame;
-    frame1->dst_mac = arp_table[dst_ip]->neighbor_MAC;
+    memcpy(frame1->dst_mac, arp_table[dst_ip_32]->neighbor_MAC, MAC_ADDR_SIZE_BYTES);
     frame1->payload = msg;
-    frame1->src_mac = get_port_MAC(port_id);
-    size = frame1->dst_mac.size() + frame1->src_mac.size() + frame1->payload.size();
+    memcpy(frame1->src_mac, get_port_MAC(port_id), MAC_ADDR_SIZE_BYTES);
+    // cout << "======================\n";
+    // cout << "port id " << port_id << endl; 
+    // print_byte_array(get_port_MAC(port_id), 6);
+    // ports[port_id]->print_port_state();
+    // cout << "======================\n";
+    size = 2 * MAC_ADDR_SIZE_BYTES + frame1->payload.size();
     frame_to_byte(frame1, send_buffer);
     delete frame1;
     
+    ready_to_send = true;
     // cout << "test send " << send_buffer.dst_mac << endl;
     return size;
 }
 
-void Router::add_arp_table_entry(string remote_end_ip, string remote_end_mac){
+void Router::add_arp_table_entry(uint8_t *remote_end_ip, uint8_t *remote_end_mac){
+    uint32_t remote_end_ip_32 = bytes_to_word(remote_end_ip);
     ARP_table_entry *new_entry = new ARP_table_entry;
-    new_entry->neighbor_IP = remote_end_ip;
-    new_entry->neighbor_MAC = remote_end_mac;
-    arp_table[remote_end_ip] = new_entry;
+    memcpy(new_entry->neighbor_IP, &remote_end_ip_32, IP_ADDR_SIZE_BYTES);
+    // new_entry->neighbor_IP = remote_end_ip_32;
+    // new_entry->neighbor_MAC = remote_end_mac;
+    memcpy(new_entry->neighbor_MAC, remote_end_mac, MAC_ADDR_SIZE_BYTES);
+    arp_table[remote_end_ip_32] = new_entry;
     arp_table_entry_num++;
 }
 
-int Router::remove_arp_table_entry(string ip){
-    return arp_table.erase(ip);
+ARP_table_entry* Router::get_arp_table_entry(uint8_t *IP){
+    uint32_t ip_32 = bytes_to_word(IP);
+    return arp_table[ip_32];
+}
+
+int Router::remove_arp_table_entry(uint8_t *IP){
+    uint32_t ip_32 = bytes_to_word(IP);
+    return arp_table.erase(ip_32);
 }
 
 void Router::print_ARP_table(){
@@ -78,7 +98,11 @@ void Router::print_ARP_table(){
     cout << "===============================================================\n";
     cout << "IP                " << "MAC       " << endl;
     for(const auto& entry : arp_table){
-        cout << entry.second->neighbor_IP << "       " << entry.second->neighbor_MAC << endl;
+        // cout << entry.second->neighbor_IP << "       " << entry.second->neighbor_MAC << endl;
+        print_ip(entry.second->neighbor_IP);
+        cout << "       ";
+        print_mac(entry.second->neighbor_MAC);
+        cout << endl;
     }
     cout << "===============================================================\n\n";
 }
@@ -91,16 +115,25 @@ void Router::free_ARP_table() {
     arp_table_entry_num = 0;
 }
 
-void Router::add_routing_table_entry(string dst_ip, int interface_id){
+void Router::add_routing_table_entry(uint8_t *dst_ip, int interface_id){
     routing_table_entry *new_entry = new routing_table_entry;
-    new_entry->dst_IP= dst_ip;
+    memcpy(new_entry->dst_IP, dst_ip, IP_ADDR_SIZE_BYTES);
     new_entry->interface_id = interface_id;
-    routing_table[dst_ip] = new_entry;
+    uint32_t dst_ip_32 = bytes_to_word(dst_ip);
+    routing_table[dst_ip_32] = new_entry;
 }
 
-int Router::remove_routing_table_entry(string dst_ip){
-    return routing_table.erase(dst_ip);
+routing_table_entry * Router::get_routing_table_entry(uint8_t *IP){
+    uint32_t ip_32 = bytes_to_word(IP);
+    return routing_table[ip_32];
 }
+
+int Router::remove_routing_table_entry(uint8_t *dst_ip){
+    uint32_t ip_32 = bytes_to_word(dst_ip);
+    return routing_table.erase(ip_32);
+}
+
+
 
 void Router::print_routing_table(){
     cout << "===============================================================\n";
@@ -108,7 +141,8 @@ void Router::print_routing_table(){
     cout << "===============================================================\n";
     cout << "IP                " << "Interface       " << endl;
     for(const auto& entry : routing_table){
-        cout << entry.second->dst_IP << "       " << entry.second->interface_id << endl;
+        print_ip(entry.second->dst_IP);
+        cout << "       " << entry.second->interface_id << endl;
     }
     cout << "===============================================================\n\n";
 }
@@ -166,11 +200,11 @@ void Router::print_port_status(){
     cout << endl;
 }
 
-void Router::set_port_MAC(int port_id, string mac_addr){
+void Router::set_port_MAC(int port_id, uint8_t *mac_addr){
     ports[port_id]->set_MAC_addr(mac_addr);
 }
 
-string Router::get_port_MAC(int port_id){
+uint8_t* Router::get_port_MAC(int port_id){
     return ports[port_id]->get_MAC_addr();
 }
 
@@ -179,11 +213,11 @@ string Router::get_port_MAC(int port_id){
 // #        getters and setters
 // #
 // ################################################
-void Router::set_ip(string ip){
-    ip_addr = ip;
+void Router::set_ip(uint8_t *ip){
+    memcpy(ip_addr, ip, IP_ADDR_SIZE_BYTES);
 }
 
-string Router::get_ip(){
+uint8_t* Router::get_ip(){
     return ip_addr;
 }
 
@@ -212,60 +246,12 @@ uint8_t* Router::get_recv_buffer(){
 void Router::frame_to_byte(frame *f, uint8_t *byte_array){
     int offset = 0;
 
-    memcpy(byte_array + offset, f->dst_mac.c_str(), f->dst_mac.size());
-    offset += f->dst_mac.size();
+    memcpy(byte_array + offset, f->dst_mac, MAC_ADDR_SIZE_BYTES);
+    offset += MAC_ADDR_SIZE_BYTES;
 
-    memcpy(byte_array + offset, f->src_mac.c_str(), f->src_mac.size());
-    offset += f->src_mac.size();
+    memcpy(byte_array + offset, f->src_mac, MAC_ADDR_SIZE_BYTES);
+    offset += MAC_ADDR_SIZE_BYTES;
 
     memcpy(byte_array + offset, f->payload.c_str(), f->payload.size());
 }
-
-void Router::print_byte_array(uint8_t *byte_array, int size_byte){
-    uint16_t bytes_counter = 0;
-    int num_of_lines = 0;
-    int num_bytes_to_print = 0;
-    int remainder = size_byte % 32;
-    if(remainder == 0){
-        num_of_lines = size_byte / 32;
-    } else{
-        num_of_lines = size_byte / 32 + 1;
-    }
-    for(int i = 0; i < num_of_lines; i++){
-        printf("%04u     ", bytes_counter);
-        if(i == num_of_lines - 1 && remainder != 0){ 
-            num_bytes_to_print = remainder;
-        } else{
-            num_bytes_to_print = 32;
-        }
-        // printing the hex value 
-        for(int j = 0; j < num_bytes_to_print; j++){
-            printf("%02X ", byte_array[(i * num_bytes_to_print) + j]);
-            if(j == 15){
-                printf(" ");
-            }
-        }
-        printf(" ");
-        // upon reaching last line, add padding to hex values so that characters align
-        if(i == num_of_lines - 1){
-            int padding = 32 - num_bytes_to_print;
-            for (int j = 0; j < padding; j++) {
-                printf("   ");
-            }
-        }
-        // printing characters
-        for (int j = 0; j < num_bytes_to_print; j++) {
-            uint8_t value = byte_array[i * 32 + j];
-            if (isprint(value)) {
-                printf("%c", value);
-            } else {
-                printf(".");
-            }
-        }
-        printf("\n");
-        bytes_counter += num_bytes_to_print;
-    }
-
-}
-
 

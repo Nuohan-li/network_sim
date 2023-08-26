@@ -52,8 +52,6 @@ class Network{
         Link *find_link(int router_id1, int port_id1);
         int remove_link(int router_id1, int port_id1);
         void remove_all_links();
-        void print_all_links();
-        
-
+        void print_all_links();        
 
 };
