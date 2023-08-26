@@ -15,6 +15,7 @@
     #include <sys/un.h>
 #endif
 
+// stored outgoing frame to send_buffer -> needs network to pull it and 'send' it to destination
 int main(){
 
     Router *router1 = new Router(1);
