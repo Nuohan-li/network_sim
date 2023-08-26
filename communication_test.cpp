@@ -17,6 +17,12 @@
 #endif
 // g++ router.cpp communication_test.cpp port.cpp network.cpp misc.cpp -> test using this file
 // stored outgoing frame to send_buffer -> needs network to pull it and 'send' it to destination
+
+/*
+    to send packet, looks like that I can use socket library with sendto function, but then I will have to use sockaddr_in struct
+    which I don't want to.
+    Another way to simulate the transmission of packet at layer 2 is required
+*/
 int main(){
 
     Router *router1 = new Router(1);
@@ -51,7 +57,7 @@ int main(){
     router1->set_port_status(1, 1);
     router1->set_port_MAC(1, mac3);
     int size = router1->populate_send_buffer(ip1, "test message");
-    print_byte_array(router1->get_send_buffer(), size);
+    print_byte_array(router1->get_send_buffer().msg_buffer, size);
     // cout << router1->send_buffer << endl;
 
     // uint8_t values[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};

@@ -37,26 +37,43 @@ struct frame{
     string payload;
 };
 
+struct send_buffer{
+    int data_size;
+    int payload_size;
+    uint8_t msg_buffer[10000];
+};
+
+struct recv_buffer{
+    int data_size;
+    int payload_size;
+    uint8_t msg_buffer[10000];
+};
+
+
 class Router{
 
 private:
     int router_id;
     uint8_t ip_addr[IP_ADDR_SIZE_BYTES];
     unordered_map<int, Port*> ports;  // port ID used as key
-    
-    uint8_t recv_buffer[10000];
-    uint8_t send_buffer[10000];
+    send_buffer send_buf;
+    recv_buffer recv_buf;
+    // uint8_t recv_buffer[10000];
+    // uint8_t send_buffer[10000];
     unordered_map<uint32_t, ARP_table_entry *> arp_table; // IP used as key
     unordered_map<uint32_t, routing_table_entry*> routing_table; // IP used as key
     bool ready_to_send;
+    bool ready_to_recv;
     int arp_table_entry_num;
 public: 
     // router function
     Router(int router_id);
     ~Router();
     int populate_send_buffer(uint8_t *dst_ip, string msg);
+    void populate_recv_buffer(uint8_t *data, int data_size, int payload_size); // this function should only be used by network class after confirming link status
     int broadcast(string msg);
-    void receive(Router *remote_end);
+    // parse_recv_data should check for the next hop and transmit the packet, however simply parsing the recv_buffer is good enough for now
+    void parse_recv_data();
     void add_arp_table_entry(uint8_t *remote_end_ip, uint8_t *remote_end_mac);
     ARP_table_entry* get_arp_table_entry(uint8_t *IP);
     int remove_arp_table_entry(uint8_t *remote_end_ip);
@@ -86,9 +103,10 @@ public:
     void set_router_id(int id);
     uint8_t *get_ip();
     void set_ip(uint8_t *ip);
-    uint8_t *get_send_buffer();
-    uint8_t *get_recv_buffer();
-    
+    send_buffer get_send_buffer();
+    recv_buffer get_recv_buffer();
+    bool is_ready_to_send();
+    bool is_ready_to_receive();
     
 };
 

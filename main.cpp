@@ -59,6 +59,13 @@ void network_test(){
 
     network.remove_all_links();
     network.print_all_links();
+
+    cout << "=============================== send/recv test =============================== \n";
+    Router *r1 = network.get_router_by_id(201);
+    Router *r2 = network.get_router_by_id(102);
+
+    r2->print_ARP_table();
+    r2->print_routing_table();
 }
 
 int main(){

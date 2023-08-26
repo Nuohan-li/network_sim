@@ -158,10 +158,9 @@ int Network::connect_link(int router_id1, int router_id2, int port_id1, int port
     return SUCCESS;
 }
 
-Link* Network::find_link(int router_id, int port_id){
+Link* Network::find_link(int router_id, int router_id2){
     for(auto link : links){
-        if((router_id == link->router_id1 && port_id == link->port_id1) || 
-            (router_id == link->router_id2 && port_id == link->port_id2)){
+        if(router_id == link->router_id1 && router_id2 == link->router_id2){
             return link;
         }
     }
@@ -208,6 +207,21 @@ void Network::print_all_links(){
         cout << link->router_id1 << ":" << link->port_id1 << "<--->" << link->router_id2 << ":" << link->port_id2 << endl;
     }
     cout << endl;
+}
+
+int Network::send_msg(Router *sender, Router *receiver){
+    Link *link = find_link(sender->get_router_id(), receiver->get_router_id());
+    if(link == nullptr){
+        cout << "There is no link between router " << sender->get_router_id() << " and " << receiver->get_router_id() << endl;
+        return LINK_DOES_NOT_EXIST;
+    }
+    if(!receiver->is_ready_to_receive()){
+        cout << "Receiving end is not ready to receive data yet\n";
+        return NOT_READY_TO_RECV;
+    }
+
+    receiver->populate_recv_buffer(sender->get_send_buffer().msg_buffer, sender->get_send_buffer().data_size, sender->get_send_buffer().payload_size);
+    // memset(&sender->get_send_buffer(), 0, sizeof(sender->get_send_buffer()));
 }
 
 

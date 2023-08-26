@@ -13,6 +13,7 @@ enum return_code{
     ROUTER_ALREADY_IN_NETWORK = -3,
     FAILED_TO_CONNECT_LINK = -4,
     LINK_DOES_NOT_EXIST = -5,
+    NOT_READY_TO_RECV = -6,
 };
 
 typedef struct Link{
@@ -45,13 +46,15 @@ class Network{
         bool check_router_exists(int id);
         void print_all_routers();
         int first_empty_slot();
-        void print_router_mtable(int router_id);
 
         // link related functions
         int connect_link(int router_id1, int router_id2, int port_id1, int port_id2);
-        Link *find_link(int router_id1, int port_id1);
+        Link *find_link(int router_id1, int router_id2);
         int remove_link(int router_id1, int port_id1);
         void remove_all_links();
-        void print_all_links();        
+        void print_all_links();    
+
+        // handling sending/receiving message
+        int send_msg(Router *sender, Router *receiver);    
 
 };

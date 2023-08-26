@@ -12,7 +12,11 @@ Router::Router(int router_id){
     init_ports();
     arp_table.clear();
     set_router_id(router_id);
-    arp_table_entry_num = 0;    
+    arp_table_entry_num = 0;   
+    memset(&send_buf, 0, sizeof(send_buffer)); 
+    memset(&recv_buf, 0, sizeof(recv_buffer)); 
+    ready_to_recv = false;
+    ready_to_send = false;
 }
 
 Router::~Router(){
@@ -57,18 +61,47 @@ int Router::populate_send_buffer(uint8_t *dst_ip, string msg){
     memcpy(frame1->dst_mac, arp_table[dst_ip_32]->neighbor_MAC, MAC_ADDR_SIZE_BYTES);
     frame1->payload = msg;
     memcpy(frame1->src_mac, get_port_MAC(port_id), MAC_ADDR_SIZE_BYTES);
-    // cout << "======================\n";
-    // cout << "port id " << port_id << endl; 
-    // print_byte_array(get_port_MAC(port_id), 6);
-    // ports[port_id]->print_port_state();
-    // cout << "======================\n";
     size = 2 * MAC_ADDR_SIZE_BYTES + frame1->payload.size();
-    frame_to_byte(frame1, send_buffer);
-    delete frame1;
+    frame_to_byte(frame1, send_buf.msg_buffer);
+    
     
     ready_to_send = true;
+    send_buf.data_size = size;
+    send_buf.payload_size = frame1->payload.size();
+    delete frame1;
     // cout << "test send " << send_buffer.dst_mac << endl;
     return size;
+}
+
+void Router::populate_recv_buffer(uint8_t *data, int data_size, int payload_size){
+    memcpy(recv_buf.msg_buffer, data, data_size);
+    recv_buf.data_size = data_size;
+    recv_buf.payload_size = payload_size;
+    ready_to_recv = false;
+}
+
+void Router::parse_recv_data(){
+    frame *frame1 = new frame;
+    int offset = 0;
+    memcpy(frame1->dst_mac, &recv_buf.msg_buffer[offset], MAC_ADDR_SIZE_BYTES);
+    offset += MAC_ADDR_SIZE_BYTES;
+    memcpy(frame1->src_mac, &recv_buf.msg_buffer[offset], MAC_ADDR_SIZE_BYTES);
+    offset += MAC_ADDR_SIZE_BYTES;
+    memcpy(&frame1->payload, &recv_buf.msg_buffer[offset], recv_buf.payload_size);
+
+    uint8_t recv_msg[10000];
+    frame_to_byte(frame1, recv_buf.msg_buffer);
+    cout << "received data\n";
+    cout << "dst MAC ";
+    print_mac(frame1->dst_mac);
+    cout << "src MAC ";
+    print_mac(frame1->src_mac);
+    cout << "payload ";
+    // print_byte_array(frame1->payload, recv_buf.payload_size);
+    cout << frame1->payload;
+    ready_to_recv = true;
+    memset(&recv_buf, 0, sizeof(recv_buffer));
+    delete frame1;
 }
 
 void Router::add_arp_table_entry(uint8_t *remote_end_ip, uint8_t *remote_end_mac){
@@ -229,12 +262,16 @@ int Router::get_router_id(){
     return router_id;
 }
 
-uint8_t* Router::get_send_buffer(){
-    return send_buffer;
+send_buffer Router::get_send_buffer(){
+    return send_buf;
 }
 
-uint8_t* Router::get_recv_buffer(){
-    return recv_buffer;
+recv_buffer Router::get_recv_buffer(){
+    return recv_buf;
+}
+
+bool Router::is_ready_to_receive(){
+    return ready_to_recv;
 }
 
 // ################################################
